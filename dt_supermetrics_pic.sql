@@ -26,6 +26,7 @@ Select
  date_id,
  url_campaign,
  ads_name,
+ ads_previewlink,
  utm_source,
  gdv,
  trx,
@@ -60,6 +61,7 @@ from
 		date_id,
 		url_campaign,
 		ads_name,
+		ads_previewlink,
 		utm_source,
 		gdv,
 		trx,
@@ -88,6 +90,7 @@ from
 			date_id,
 			url_campaign,
 			ads_name,
+			ads_previewlink,
 			utm_source,
 			gdv,
 			trx,
@@ -114,68 +117,43 @@ from
 		-- tbl_ads_donation_1
 		(
 			Select
-				agent_optimize as agent_optimize,
-				project_categories_medical as project_categories_medical,
-				parent_url as parent_url,
-				campaigner_full_name as campaigner_full_name,
-				campaigner_organization_status as campaigner_organization_status,
-				partners as partners,
-				acquisition_by as acquisition_by,
-				pic_ad_name,
-				last_ad_name,
-				start_date_url,
-				Coalesce(ad_name_ads,utm_ad_name) as ads_name,
-				Coalesce(utm_source,'no donation') as utm_source,
-				Coalesce(verified_month,month_ads) as month_id,
-				Coalesce(verified_day,date_ads) as date_id,
-				Coalesce(url_donation,short_url_ads) as url_campaign,
-				Coalesce(gdv,0) as gdv,
-				Coalesce(trx,0) as trx,
-				Coalesce(cost,0) as cost,
-				Coalesce(landing_page_views,0) as landing_page_views,
-				Coalesce(impressions,0) as impressions,
-				Coalesce(action_link_click,0) as action_link_click,
-				Coalesce(website_purchase,0) as website_purchase,
-				Coalesce(purchase_conversion_value,0) as purchase_conversion_value
-			from
-			-- Table ads with pic
-			-- tbl_ads_2
-			(
-				Select
-					date_ads as date_ads,
-					ad_name_ads,
-					start_date_url,
-					short_url_ads as short_url_ads,
-					month as month_ads,
-					start_date_ads,
-					first_value(ad_name_ads) over(partition by short_url_ads,month order by month asc, start_date_ads desc) as pic_ad_name,
-					first_value(ad_name_ads) over(partition by short_url_ads order by start_date_ads desc) as last_ad_name,
-					sum(cost) as cost,
-					sum(landing_page_views) as landing_page_views,
-					sum(impressions) as impressions,
-					sum(action_link_click) as action_link_click,
-					sum(website_purchase) as website_purchase,
-					sum(purchase_conversion_value) as purchase_conversion_value
-				FROM
------------- Table ads only
-				( --tbl_ads_1
-					SELECT
-						date as date_ads,
-						left(ad_name,100) as ad_name_ads,
-						short_url as short_url_ads,
-						concat(cast(EXTRACT(YEAR FROM date) as string),'-',cast(EXTRACT(MONTH FROM date) as string)) as month, --to_char(date,'YYYY-MM') as month,
-						min(date) over (partition by left(ad_name,100) order by date asc) as start_date_ads,
-						min(date) over (partition by short_url order by date asc) as start_date_url,
-						cost as cost,
-						landing_page_views as landing_page_views,
-						impressions as impressions,
-						action_link_click as action_link_click,
-						website_purchase as website_purchase,
-						purchase_conversion_value as purchase_conversion_value
-					FROM data_warehouse.f_supermetrics_facebook_ads
-					where date >= '2020-01-01'
-				) as ads_1
-				group by 1,2,3,4,5,6
+			date_ads as date_ads,
+			ad_name_ads,
+			dt_previewlink.preview_link as ads_previewlink,
+			start_date_url,
+			short_url_ads as short_url_ads,
+			month as month_ads,
+			start_date_ads,
+			first_value(ad_name_ads) over(partition by short_url_ads,month order by month asc, start_date_ads desc) as pic_ad_name,
+			first_value(ad_name_ads) over(partition by short_url_ads order by start_date_ads desc) as last_ad_name,
+			sum(cost) as cost,
+			sum(landing_page_views) as landing_page_views,
+			sum(impressions) as impressions,
+			sum(action_link_click) as action_link_click,
+			sum(website_purchase) as website_purchase,
+			sum(purchase_conversion_value) as purchase_conversion_value
+			FROM
+			------------ Table ads only
+			    ( --tbl_ads_1
+			    SELECT
+			    date as date_ads,
+			    left(ad_name,100) as ad_name_ads,
+			    short_url as short_url_ads,
+			    concat(cast(EXTRACT(YEAR FROM date) as string),'-',cast(EXTRACT(MONTH FROM date) as string)) as month, --to_char(date,'YYYY-MM') as month,
+			    min(date) over (partition by left(ad_name,100) order by date asc) as start_date_ads,
+			    min(date) over (partition by short_url order by date asc) as start_date_url,
+			    cost as cost,
+			    landing_page_views as landing_page_views,
+			    impressions as impressions,
+			    action_link_click as action_link_click,
+			    website_purchase as website_purchase,
+			    purchase_conversion_value as purchase_conversion_value
+			    FROM data_warehouse.f_supermetrics_facebook_ads
+			    where date >= '2020-01-01'
+			    ) as ads_1
+			left join `kitabisa-data-team.data_mart.dt_previewlink_ads` as dt_previewlink
+			on ads_1.ad_name_ads = dt_previewlink.ad_name
+			group by 1,2,3,4,5,6,7
 			) as ads_2
 			full outer join
 			-- Table donation only
