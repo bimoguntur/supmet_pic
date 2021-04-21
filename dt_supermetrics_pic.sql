@@ -26,6 +26,7 @@ Select
  date_id,
  url_campaign,
  ads_name,
+ ads_source,
  utm_source,
  gdv,
  trx,
@@ -41,6 +42,7 @@ Select
  parent_url,
  campaigner_full_name,
  campaigner_organization_status,
+ parent_user_name,
  partners_page,
  start_date_url,
  acquisition_by
@@ -60,6 +62,7 @@ from
 		date_id,
 		url_campaign,
 		ads_name,
+        ads_source,
 		utm_source,
 		gdv,
 		trx,
@@ -71,6 +74,8 @@ from
 		website_purchase,
 		purchase_conversion_value,
 		project_id,
+        parent_user_id,
+        parent_user_name,
 		expired,
 		final_donation_percentage,
 		project_categories_medical,
@@ -88,6 +93,7 @@ from
 			date_id,
 			url_campaign,
 			ads_name,
+            ads_source,
 			utm_source,
 			gdv,
 			trx,
@@ -98,6 +104,8 @@ from
 			website_purchase,
 			purchase_conversion_value,
 			project_id,
+            parent_user_id,
+            parent_user_name,
 			expired,
 			final_donation_percentage,
 			Coalesce(Coalesce(pic_ad_name, first_value(pic_ad_name) over(partition by url_campaign,month_id order by month_id asc,cost desc)),first_value(last_ad_name) over(partition by url_campaign order by cost desc)) as pic_name,
@@ -124,6 +132,7 @@ from
 				pic_ad_name,
 				last_ad_name,
 				start_date_url,
+                ads_source,
 				Coalesce(ad_name_ads,utm_ad_name) as ads_name,
 				Coalesce(utm_source,'no donation') as utm_source,
 				Coalesce(verified_month,month_ads) as month_id,
@@ -148,6 +157,7 @@ from
 					short_url_ads as short_url_ads,
 					month as month_ads,
 					start_date_ads,
+                    ads_source,
 					first_value(ad_name_ads) over(partition by short_url_ads,month order by month asc, start_date_ads desc) as pic_ad_name,
 					first_value(ad_name_ads) over(partition by short_url_ads order by start_date_ads desc) as last_ad_name,
 					sum(cost) as cost,
@@ -171,11 +181,30 @@ from
 						impressions as impressions,
 						action_link_click as action_link_click,
 						website_purchase as website_purchase,
-						purchase_conversion_value as purchase_conversion_value
+						purchase_conversion_value as purchase_conversion_value,
+                        'fb' as ads_source
 					FROM data_warehouse.f_supermetrics_facebook_ads
 					where date >= '2020-01-01'
+                    UNION ALL
+                    SELECT
+						date as date_ads,
+						left(ad_name,100) as ad_name_ads,
+						short_url as short_url_ads,
+						concat(cast(EXTRACT(YEAR FROM date) as string),'-',cast(EXTRACT(MONTH FROM date) as string)) as month, --to_char(date,'YYYY-MM') as month,
+						min(date) over (partition by left(ad_name,100) order by date asc) as start_date_ads,
+						min(date) over (partition by short_url order by date asc) as start_date_url,
+						cost as cost,
+						0 as landing_page_views,
+						0 as impressions,
+						0 as action_link_click,
+						0 as website_purchase,
+						0 as purchase_conversion_value,
+                        'tiktok' as ads_source
+                    From `kitabisa-data-team.data_warehouse.f_supermetrics_tiktok_ads`
+                    where date >= '2020-01-01'
+					
 				) as ads_1
-				group by 1,2,3,4,5,6
+				group by 1,2,3,4,5,6,7
 			) as ads_2
 			full outer join
 			-- Table donation only
@@ -222,8 +251,23 @@ from
 				cast(project_id as string) as project_id,
 				short_url as url_proj,
 				expired,
-				final_donation_percentage
-			from data_warehouse.f_project
+				final_donation_percentage,
+                tbl_hash.hash,
+                tbl_hash.parent_user_id, 
+                tbl_hash.parent_user_name
+			from data_warehouse.f_project 
+            left join 
+            (
+                select distinct parent_user_id,
+                case when parent_user_id is not null then client_name else null end as parent_user_name,
+                coalesce(cast(c.user_id as int64),h.user_id) as campaigner_id,
+                h.hash 
+                from `kitabisa-data-team.data_lake.gsheet_ngo_cabang` c
+                full outer join `kitabisa-data-team.data_warehouse.d_hash_user_dashboard_lembaga` h
+                on cast(parent_user_id as int64)=h.user_id
+            ) as tbl_hash
+            on f_project.user_id = tbl_hash.campaigner_id 
+            
 		) as project_1 on ads_donation_1.url_campaign = project_1.url_proj
 	) as ads_donation_project_1
 	left join
