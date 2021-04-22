@@ -265,6 +265,7 @@ from
                 from `kitabisa-data-team.data_lake.gsheet_ngo_cabang` c
                 full outer join `kitabisa-data-team.data_warehouse.d_hash_user_dashboard_lembaga` h
                 on cast(parent_user_id as int64)=h.user_id
+		where h.hash is not null
             ) as tbl_hash
             on f_project.user_id = tbl_hash.campaigner_id 
             
