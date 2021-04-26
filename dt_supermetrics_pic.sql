@@ -184,7 +184,7 @@ from
 						purchase_conversion_value as purchase_conversion_value,
                         'fb' as ads_source
 					FROM data_warehouse.f_supermetrics_facebook_ads
-					where date >= '2020-01-01'
+					where date >= '2021-01-01'
                     UNION ALL
                     SELECT
 						date as date_ads,
@@ -201,9 +201,24 @@ from
 						0 as purchase_conversion_value,
                         'tiktok' as ads_source
                     From `kitabisa-data-team.data_warehouse.f_supermetrics_tiktok_ads`
-                    where date >= '2020-01-01'
+                    where date >= '2021-01-01'
 					
 				) as ads_1
+                left join 
+                (
+                    select 
+                    distinct
+                    *
+                    from (
+                        Select
+                        ad_name,
+                        date_id,
+                        row_number() over (partition by ad_name order by date_id desc) as filter_row,
+                        preview_link as preview_link
+                        from `kitabisa-data-team.data_mart.dt_previewlink_ads`
+                    ) where filter_row = 1
+                ) as ads_link
+                on ads_1.ad_name_ads = ads_link.ad_name
 				group by 1,2,3,4,5,6,7
 			) as ads_2
 			full outer join
@@ -239,7 +254,7 @@ from
 				from (select *, split(utm_campaign, '_') utm_campaign_1 from data_warehouse.f_donation) a
 				where cast(flag_support_details as string) like '%"optimize_by_ads":true%'
 				and (donation_statuses = 'VERIFIED' OR donation_statuses = 'PAID')
-				and verified >= '2020-01-01'
+				and verified >= '2021-01-01'
 				group by 3,4,5,6,7,8,9,10,11,12,13,14
 			) as donation_1
 			on ads_2.ad_name_ads = donation_1.utm_ad_name and ads_2.date_ads = donation_1.verified_day
