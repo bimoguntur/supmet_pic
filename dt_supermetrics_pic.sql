@@ -198,12 +198,27 @@ project_details as (
     on cast(project_1.project_id as string) = cast(pd.project_id as string) and project_1.url_proj  = pd.short_url and project_1.launched = pd.launched
     where start_date_ads_by_agency is not null
 ),
+-- funneling worklist growth
+leads_grading as (
+    SELECT 
+        short_url,
+        max(grade) as leads_grading,
+    FROM `kitabisa-data-team.data_lake.gsheet_funneling_worklist` 
+    group by 1
+),
+project_details_grading as (
+    select 
+        *
+    from project_details left join leads_grading
+    on project_details.url_proj = leads_grading.short_url  
+),
 -- tbl_ads_donation_project 
 ads_donation_project_1 as (
     Select
         month_id,
         date_id,
         url_campaign,
+        leads_grading,
         ads_name,
         preview_link,
         ads_source,
@@ -233,9 +248,9 @@ ads_donation_project_1 as (
         first_value(partners) over(partition by url_campaign order by gdv desc) as partners_page,
         first_value(agent_optimize) over(partition by url_campaign order by gdv desc) as agent_optimize,
         first_value(start_date_url) over(partition by url_campaign order by cost desc) as start_date_url,
-        coalesce(first_value(ads_donation_ga.acquisition_by) over(partition by url_campaign order by gdv desc), project_details.acquisition_by) as acquisition_by,
-    from ads_donation_ga left join project_details 
-    on ads_donation_ga.url_campaign = project_details.url_proj
+        coalesce(first_value(ads_donation_ga.acquisition_by) over(partition by url_campaign order by gdv desc), project_details_grading.acquisition_by) as acquisition_by,
+    from ads_donation_ga left join project_details_grading 
+    on ads_donation_ga.url_campaign = project_details_grading.url_proj
 ),
 -- Tabel ngo_region_id_2
 region_ngo_id_2 as (
@@ -263,6 +278,7 @@ ads_donation_project_ngo_list_1 as (
         month_id,
         date_id,
         url_campaign,
+        leads_grading,
         ads_name,
         preview_link,
         ads_source,
@@ -331,6 +347,7 @@ supermetrics_pic as (
         month_id,
         date_id,
         url_campaign,
+        leads_grading,
         ads_name,
         preview_link,
         ads_source,
