@@ -295,6 +295,7 @@ ads_donation_project_ngo_list_1 as (
     from ads_donation_project_1  left join region_ngo_id_2 
     on ads_donation_project_1.project_id = region_ngo_id_2.project_region_ngo_list
 ),
+-- Tabel database region ngo
 region_ngo_province_1 as (
 	Select
 		region_id,
