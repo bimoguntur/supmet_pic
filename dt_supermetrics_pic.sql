@@ -3,7 +3,8 @@ with ads_1 as (
     SELECT
         date as date_ads,
         ad_name,
-        short_url as short_url_ads,
+        short_url as 
+        ,
         concat(cast(EXTRACT(YEAR FROM date) as string),'-',cast(EXTRACT(MONTH FROM date) as string)) as month, --to_char(date,'YYYY-MM') as month,
         min(date) over (partition by left(ad_name,100) order by date asc) as start_date_ads,
         min(date) over (partition by short_url order by date asc) as start_date_url,
@@ -202,7 +203,7 @@ project_details as (
 leads_grading as (
     SELECT 
         short_url,
-        max(date(timestamp)) as ready_date,
+        max(case when timestamp = '' then null else cast(timestamp as date) end) as ready_date, /* robbigh */
         max(grade) as leads_grading,
     FROM `kitabisa-data-team.data_lake.gsheet_funneling_worklist` 
     group by 1
