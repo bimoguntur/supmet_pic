@@ -1,3 +1,4 @@
+-- Tabel ads_donation_project_region_province
 -- Tabel ads_1
 with ads_1 as (
     SELECT
@@ -36,10 +37,7 @@ with ads_1 as (
 ),
 -- tabel ads_preview_link
 ads_preview_link as (
-    # select 
-    # first_value(ad_name) over(partition by date_id order by date_id DESC) as l_ad_name,
-    # first_value(preview_link) over(partition by ad_name order by date_id DESC) as l_preview_link,
-    # from `kitabisa-data-team.data_mart.dt_previewlink_ads`
+  
     select distinct * from (
         Select
             ad_name as l_ad_name,
@@ -59,6 +57,7 @@ ads_permalink as (
         start_date_url,
         short_url_ads as short_url_ads,
         month as month_ads,
+        date_id as feeding_date_ads,
         start_date_ads,
         ads_source,
         first_value(ad_name) over(partition by short_url_ads,month order by month asc, start_date_ads desc) as pic_ad_name,
@@ -71,7 +70,7 @@ ads_permalink as (
         sum(purchase_conversion_value) as purchase_conversion_value
     from ads_1 left join ads_preview_link 
     on ads_1.ad_name = ads_preview_link.l_ad_name
-    group by 1,2,3,4,5,6,7,8
+    group by 1,2,3,4,5,6,7,8,9
 ),
 donation_1 as (
     SELECT
@@ -128,6 +127,7 @@ ads_donation_1 as (
         Coalesce(utm_source,'no donation') as utm_source,
         Coalesce(verified_month,month_ads) as month_id,
         Coalesce(verified_day,date_ads) as date_id,
+        feeding_date_ads,
         Coalesce(url_donation,short_url_ads) as url_campaign,
         Coalesce(gdv,0) as gdv,
         Coalesce(trx,0) as trx,
@@ -185,6 +185,135 @@ project_1 as (
     ) as tbl_hash
     on f_project.user_id = tbl_hash.campaigner_id 
     ),
+-- grouping campaign issue
+campaign_issue as (
+    SELECT
+    CASE 
+    WHEN
+    (lower(short_url) like "%covid-19%" or lower(short_url) like "%covid19%" or lower(short_url) like "%coronavirus%" or lower(short_url) like "%corona%")
+    and (lower(title) like "%covid-19%" or lower(title) like "%covid19%" or lower(title) like "%coronavirus%" or lower(title) like "%corona%")
+    and (lower(description) like "%covid-19%" or lower(description) like "%covid19%" or lower(description) like "%coronavirus%" or lower(description) like "%corona%")
+    THEN "CORONA"
+    WHEN
+        (LOWER(project_categories)="bantuan medis & kesehatan" or LOWER(project_categories)="balita & anak sakit")  
+        AND (lower(short_url) like "%bayi%" and lower(short_url) like "%prematur%") 
+        AND ((lower(title) like "%minum ketuban%" and lower(title) like "%prematur%")
+        OR (lower(description) like "%minum ketuban%" and lower(description) like "%prematur%"))
+        THEN "PREMATUR BBLR/BBLSR (Terminum air ketuban)"
+    WHEN
+        (LOWER(project_categories)="bantuan medis & kesehatan" or LOWER(project_categories)="balita & anak sakit")  
+        AND (lower(short_url) like "%bayi%" and lower(short_url) like "%prematur%") 
+        AND (lower(title) like "%gagal organ%" and lower(description) like "%prematur%")
+        THEN "PREMATUR BBLR/BBLSR (Gagal organ)"
+    WHEN
+        (LOWER(project_categories)="bantuan medis & kesehatan" or LOWER(project_categories)="balita & anak sakit")  
+        AND (lower(short_url) like "%autoimun%" or lower(title) like "%autoimun%") 
+        AND (lower(description) like "%komplikasi%" or lower(description) like "%autoimun%")
+        THEN "AUTOIMUN"
+    WHEN
+        (LOWER(project_categories)="bantuan medis & kesehatan" or LOWER(project_categories)="balita & anak sakit")  
+        AND (lower(short_url) like "%nicu%" or lower(title) like "%nicu%")
+        AND lower(description) like "%nicu%"
+        THEN "NICU"
+    WHEN
+        (LOWER(project_categories)="bantuan medis & kesehatan" or LOWER(project_categories)="balita & anak sakit")  
+        AND ((lower(short_url) like "%hidrosefalus%" or lower(short_url) like "%tumpukan cairan di tengkorak/kepala%" or lower(short_url) like "%otak terhimpit%") 
+        OR (lower(title) like "%hidrosefalus%" or lower(title) like "%tumpukan cairan di tengkorak/kepala%" or lower(title) like "%otak terhimpit%"))
+        AND (lower(description) like "%hidrosefalus%" or lower(description) like "%tumpukan cairan di tengkorak/kepala%" or lower(description) like "%otak terhimpit%")
+        THEN "HIDROSEFALUS"
+    WHEN
+        (LOWER(project_categories)="bantuan medis & kesehatan" or LOWER(project_categories)="balita & anak sakit")  
+        AND ((lower(short_url) like "%jantung bocor%" or lower(short_url) like "%jantung bengkak%" or lower(short_url) like "%jantung membengkak%") 
+        OR (lower(title) like "%jantung bocor%" or lower(title) like "%jantung bengkak%" or lower(title) like "%jantung membengkak%"))
+        AND (lower(description) like "%jantung bocor%" or lower(description) like "%jantung bengkak%" or lower(description) like "%jantung membengkak%")
+        THEN "JANTUNG"
+    WHEN
+        (LOWER(project_categories)="bantuan medis & kesehatan" or LOWER(project_categories)="balita & anak sakit")  
+        AND ((lower(short_url) like "%perut bengkak%" or lower(short_url) like "%hati bengkak%" or lower(short_url) like "%limfa membengkak%") 
+        OR (lower(title) like "%perut bengkak%" or lower(title) like "%hati bengkak%" or lower(title) like "%limfa membengkak%"))
+        AND (lower(description) like "%perut bengkak%" or lower(description) like "%hati bengkak%" or lower(description) like "%limfa membengkak%")
+        THEN "ATRESIA BILIER"
+    WHEN
+        (LOWER(project_categories)="bantuan medis & kesehatan" or LOWER(project_categories)="balita & anak sakit")  
+        AND ((lower(short_url) like "%obstruksi usus%" or lower(short_url) like "%invaginasi usus%" or lower(short_url) like "%lumpuh usus%") 
+        OR (lower(title) like "%obstruksi usus%" or lower(title) like "%invaginasi usus%" or lower(title) like "%lumpuh usus%"))
+        AND (lower(description) like "%obstruksi usus%" or lower(description) like "%invaginasi usus%" or lower(description) like "%lumpuh usus%")
+        THEN "OBSTRUKSI USUS"
+    WHEN
+        (LOWER(project_categories)="bantuan medis & kesehatan" or LOWER(project_categories)="balita & anak sakit")  
+        AND ((lower(short_url) like "%cerebral palsy%" or lower(short_url) like "%lumpuh otak%") 
+        OR (lower(title) like "%cerebral palsy%" or lower(title) like "%lumpuh otak%"))
+        AND (lower(description) like "%cerebral palsy%" or lower(description) like "%lumpuh otak%")
+        THEN "CEREBRAL PALSY"
+    WHEN
+        (LOWER(project_categories)="bantuan medis & kesehatan" or LOWER(project_categories)="balita & anak sakit")  
+        AND ((lower(short_url) like "%meningitis%" or lower(short_url) like "%radang otak%") 
+        OR (lower(title) like "%meningitis%" or lower(title) like "%radang otak%"))
+        AND (lower(description) like "%meningitis%" or lower(description) like "%radang otak%")
+        THEN "MENINGITIS"
+    WHEN
+        (LOWER(project_categories)="bantuan medis & kesehatan" or LOWER(project_categories)="balita & anak sakit")  
+        AND ((lower(short_url) like "%Hipotiroid%" or lower(short_url) like "%radang otak%") 
+        OR (lower(title) like "%Hipotiroid%" or lower(title) like "%radang otak%"))
+        AND (lower(description) like "%Hipotiroid%" or lower(description) like "%radang otak%")
+        THEN "HIPOTIROID"
+    WHEN LOWER(project_categories)="bantuan medis & kesehatan" or LOWER(project_categories)="balita & anak sakit"
+    THEN "MEDIS"
+    WHEN LOWER(project_categories)="panti asuhan" OR LOWER(project_categories)="anak yatim dan panti asuhan"
+    THEN "YATIM"
+    WHEN LOWER(project_categories)="bencana alam" AND lower(short_url) not like "%corona%"
+    THEN "BENCANA ALAM"
+    WHEN 
+        (LOWER(project_categories)="infrastruktur umum" OR LOWER(project_categories)="rumah ibadah" OR  LOWER(project_categories)="masjid dan pesantren") 
+        AND ((lower(short_url) like "%masjid%" or lower(short_url) like "%mesjid%") 
+        OR (lower(title) like "%masjid%" or lower(title) like "%mesjid%"))
+        AND (lower(description) like "%masjid%" or lower(description) like "%mesjid%")
+        THEN "MASJID"
+    WHEN 
+        (LOWER(project_categories)="infrastruktur umum" OR LOWER(project_categories)="rumah ibadah") 
+        AND ((lower(short_url) like "%gereja%") 
+        OR (lower(title) like "%gereja%"))
+        AND (lower(description) like "%gereja%")
+        THEN "GEREJA"
+    WHEN 
+        (LOWER(project_categories)="infrastruktur umum" OR LOWER(project_categories)="rumah ibadah") 
+        AND ((lower(short_url) like "%sumur%" or lower(short_url) like "%sumber air%") 
+        OR (lower(title) like "%sumur%" or lower(title) like "%sumber air%"))
+        AND (lower(description) like "%sumur%" or lower(description) like "%sumber air%")
+        THEN "SUMUR"		
+    WHEN
+        (LOWER(project_categories)="infrastruktur umum" OR LOWER(project_categories)="bantuan pendidikan")  
+        AND ((lower(short_url) like "%pesantren%" or lower(short_url) like "%rumah quran%" or lower(short_url) like "%rumah tahfidz%" or lower(short_url) like "%rumah tahfiz%") 
+        OR (lower(title) like "%pesantren%" or lower(title) like "%rumah quran%" or lower(title) like "%rumah tahfidz%" or lower(title) like "%rumah tahfiz%"))
+        AND (lower(description) like "%pesantren%" or lower(description) like "%rumah quran%" or lower(description) like "%rumah tahfidz%" or lower(description) like "%rumah tahfiz%")
+        THEN "PESANTREN/RUMAH QURAN/RUMAH TAHFIDZ"
+    WHEN
+        (LOWER(project_categories)="infrastruktur umum" OR LOWER(project_categories)="bantuan pendidikan")  
+        AND ((lower(short_url) like "%sekolah%" or lower(short_url) like "%sekolah%" or lower(short_url) like "%sekolah%" or lower(short_url) like "%sekolah%") 
+        OR (lower(title) like "%sekolah%" or lower(title) like "%sekolah%" or lower(title) like "%sekolah%" or lower(title) like "%sekolah%"))
+        AND (lower(description) like "%sekolah%" or lower(description) like "%sekolah%" or lower(description) like "%sekolah%" or lower(description) like "%sekolah%")
+        THEN "SEKOLAH"
+    WHEN 
+        (LOWER(project_categories)="kemanusiaan" OR LOWER(project_categories)="kegiatan sosial" OR LOWER(project_categories)="mualaf dan hafidz quran") 
+        AND ((lower(short_url) like "%hafidz%" or lower(short_url) like "%hafiz%" or lower(short_url) like "%hafal quran%" or lower(short_url) like "%hapal quran%") 
+        OR (lower(title) like "%hafidz%" or lower(title) like "%hafiz%" or lower(title) like "%hafal quran%" or lower(title) like "%hapal quran%")) 
+        AND (lower(description) like "%hafidz%" or lower(description) like "%hafiz%" or lower(description) like "%hafal quran%" or lower(description) like "%hapal quran%")  
+    THEN "HAFIDZ"
+    WHEN 
+        (LOWER(project_categories)="kemanusiaan" OR LOWER(project_categories)="kegiatan sosial" OR LOWER(project_categories)="orang tua dan dhuafa") 
+        AND ((lower(short_url) like "%lansia%" or lower(short_url) like "%sebatang kara%" or lower(short_url) like "%kakek%" or lower(short_url) like "%knenek%") 
+        OR (lower(title) like "%lansia%" or lower(title) like "%sebatang kara%" or lower(title) like "%kakek%" or lower(title) like "%knenek%"))
+        AND (lower(description) like "%lansia%" or lower(description) like "%sebatang kara%" or lower(description) like "%kakek%" or lower(description) like "%knenek%") 
+    THEN "LANSIA"
+    ELSE "OTHERS"
+    END as campaign_issue,
+    project_id,
+    launched,
+    short_url,
+    start_date_activated,
+    start_date_ads_by_agency,
+    from `kitabisa-data-team.data_mart.dt_project_details`
+),
 -- tabel project_details
 project_details as (
     select 
@@ -192,18 +321,38 @@ project_details as (
         pd.project_id as pd_project_id,
         pd.launched as pd_launched,
         pd.short_url as pd_short_url,
+        pd.campaign_issue as campaign_issue,
         pd.start_date_activated as start_date_activated,
         pd.start_date_ads_by_agency as start_date_ads_by_agency,
-    from project_1 left join `kitabisa-data-team.data_mart.dt_project_details` as pd
+    from project_1 left join campaign_issue as pd
     on cast(project_1.project_id as string) = cast(pd.project_id as string) and project_1.url_proj  = pd.short_url and project_1.launched = pd.launched
     where start_date_ads_by_agency is not null
+),
+-- funneling worklist growth
+leads_grading as (
+    SELECT 
+        short_url,
+        max(case when timestamp = '' then null  else cast(timestamp as date) end) as ready_date,
+        max(grade) as leads_grading,
+    FROM `kitabisa-data-team.data_lake.gsheet_funneling_worklist` 
+    group by 1
+),
+project_details_grading as (
+    select 
+        *
+    from project_details left join leads_grading
+    on project_details.url_proj = leads_grading.short_url  
 ),
 -- tbl_ads_donation_project 
 ads_donation_project_1 as (
     Select
         month_id,
         date_id,
+        campaign_issue,
         url_campaign,
+        ready_date,
+        feeding_date_ads,
+        leads_grading,
         ads_name,
         preview_link,
         ads_source,
@@ -233,9 +382,9 @@ ads_donation_project_1 as (
         first_value(partners) over(partition by url_campaign order by gdv desc) as partners_page,
         first_value(agent_optimize) over(partition by url_campaign order by gdv desc) as agent_optimize,
         first_value(start_date_url) over(partition by url_campaign order by cost desc) as start_date_url,
-        coalesce(first_value(ads_donation_ga.acquisition_by) over(partition by url_campaign order by gdv desc), project_details.acquisition_by) as acquisition_by,
-    from ads_donation_ga left join project_details 
-    on ads_donation_ga.url_campaign = project_details.url_proj
+        coalesce(first_value(ads_donation_ga.acquisition_by) over(partition by url_campaign order by gdv desc), project_details_grading.acquisition_by) as acquisition_by,
+    from ads_donation_ga left join project_details_grading 
+    on ads_donation_ga.url_campaign = project_details_grading.url_proj
 ),
 -- Tabel ngo_region_id_2
 region_ngo_id_2 as (
@@ -262,7 +411,11 @@ ads_donation_project_ngo_list_1 as (
         regional_id_list,
         month_id,
         date_id,
+        campaign_issue,
         url_campaign,
+        ready_date,
+        feeding_date_ads,
+        leads_grading,
         ads_name,
         preview_link,
         ads_source,
@@ -301,9 +454,9 @@ region_ngo_province_1 as (
 		region_id,
 		provinsi as regional_province_name
 	from data_lake.gsheet_mapping_region_location
-),
--- supermetrics_pic
-supermetrics_pic as (
+)
+-- output supermetrics_pic
+
     Select
         pic_content,
         pic_visual,
@@ -331,6 +484,10 @@ supermetrics_pic as (
         month_id,
         date_id,
         url_campaign,
+        campaign_issue,
+        leads_grading,
+        ready_date,
+        feeding_date_ads,
         ads_name,
         preview_link,
         ads_source,
@@ -359,7 +516,3 @@ supermetrics_pic as (
         acquisition_by
     from ads_donation_project_ngo_list_1 left join region_ngo_province_1
     on cast(ads_donation_project_ngo_list_1.regional_id_list as string) = region_ngo_province_1.region_id
-)
-select 
-*
-from supermetrics_pic
