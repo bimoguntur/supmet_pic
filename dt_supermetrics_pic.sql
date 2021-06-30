@@ -188,125 +188,217 @@ project_1 as (
 -- grouping campaign issue
 campaign_issue as (
     SELECT
-    CASE 
-    WHEN
-    (lower(short_url) like "%covid-19%" or lower(short_url) like "%covid19%" or lower(short_url) like "%coronavirus%" or lower(short_url) like "%corona%")
-    and (lower(title) like "%covid-19%" or lower(title) like "%covid19%" or lower(title) like "%coronavirus%" or lower(title) like "%corona%")
-    and (lower(description) like "%covid-19%" or lower(description) like "%covid19%" or lower(description) like "%coronavirus%" or lower(description) like "%corona%")
-    THEN "CORONA"
-    WHEN
-        (LOWER(project_categories)="bantuan medis & kesehatan" or LOWER(project_categories)="balita & anak sakit")  
-        AND (lower(short_url) like "%bayi%" and lower(short_url) like "%prematur%") 
-        AND ((lower(title) like "%minum ketuban%" and lower(title) like "%prematur%")
-        OR (lower(description) like "%minum ketuban%" and lower(description) like "%prematur%"))
-        THEN "PREMATUR BBLR/BBLSR (Terminum air ketuban)"
-    WHEN
-        (LOWER(project_categories)="bantuan medis & kesehatan" or LOWER(project_categories)="balita & anak sakit")  
-        AND (lower(short_url) like "%bayi%" and lower(short_url) like "%prematur%") 
-        AND (lower(title) like "%gagal organ%" and lower(description) like "%prematur%")
-        THEN "PREMATUR BBLR/BBLSR (Gagal organ)"
-    WHEN
-        (LOWER(project_categories)="bantuan medis & kesehatan" or LOWER(project_categories)="balita & anak sakit")  
-        AND (lower(short_url) like "%autoimun%" or lower(title) like "%autoimun%") 
-        AND (lower(description) like "%komplikasi%" or lower(description) like "%autoimun%")
-        THEN "AUTOIMUN"
-    WHEN
-        (LOWER(project_categories)="bantuan medis & kesehatan" or LOWER(project_categories)="balita & anak sakit")  
-        AND (lower(short_url) like "%nicu%" or lower(title) like "%nicu%")
-        AND lower(description) like "%nicu%"
-        THEN "NICU"
-    WHEN
-        (LOWER(project_categories)="bantuan medis & kesehatan" or LOWER(project_categories)="balita & anak sakit")  
-        AND ((lower(short_url) like "%hidrosefalus%" or lower(short_url) like "%tumpukan cairan di tengkorak/kepala%" or lower(short_url) like "%otak terhimpit%") 
-        OR (lower(title) like "%hidrosefalus%" or lower(title) like "%tumpukan cairan di tengkorak/kepala%" or lower(title) like "%otak terhimpit%"))
-        AND (lower(description) like "%hidrosefalus%" or lower(description) like "%tumpukan cairan di tengkorak/kepala%" or lower(description) like "%otak terhimpit%")
-        THEN "HIDROSEFALUS"
-    WHEN
-        (LOWER(project_categories)="bantuan medis & kesehatan" or LOWER(project_categories)="balita & anak sakit")  
-        AND ((lower(short_url) like "%jantung bocor%" or lower(short_url) like "%jantung bengkak%" or lower(short_url) like "%jantung membengkak%") 
-        OR (lower(title) like "%jantung bocor%" or lower(title) like "%jantung bengkak%" or lower(title) like "%jantung membengkak%"))
-        AND (lower(description) like "%jantung bocor%" or lower(description) like "%jantung bengkak%" or lower(description) like "%jantung membengkak%")
-        THEN "JANTUNG"
-    WHEN
-        (LOWER(project_categories)="bantuan medis & kesehatan" or LOWER(project_categories)="balita & anak sakit")  
-        AND ((lower(short_url) like "%perut bengkak%" or lower(short_url) like "%hati bengkak%" or lower(short_url) like "%limfa membengkak%") 
-        OR (lower(title) like "%perut bengkak%" or lower(title) like "%hati bengkak%" or lower(title) like "%limfa membengkak%"))
-        AND (lower(description) like "%perut bengkak%" or lower(description) like "%hati bengkak%" or lower(description) like "%limfa membengkak%")
-        THEN "ATRESIA BILIER"
-    WHEN
-        (LOWER(project_categories)="bantuan medis & kesehatan" or LOWER(project_categories)="balita & anak sakit")  
-        AND ((lower(short_url) like "%obstruksi usus%" or lower(short_url) like "%invaginasi usus%" or lower(short_url) like "%lumpuh usus%") 
-        OR (lower(title) like "%obstruksi usus%" or lower(title) like "%invaginasi usus%" or lower(title) like "%lumpuh usus%"))
-        AND (lower(description) like "%obstruksi usus%" or lower(description) like "%invaginasi usus%" or lower(description) like "%lumpuh usus%")
-        THEN "OBSTRUKSI USUS"
-    WHEN
-        (LOWER(project_categories)="bantuan medis & kesehatan" or LOWER(project_categories)="balita & anak sakit")  
-        AND ((lower(short_url) like "%cerebral palsy%" or lower(short_url) like "%lumpuh otak%") 
-        OR (lower(title) like "%cerebral palsy%" or lower(title) like "%lumpuh otak%"))
-        AND (lower(description) like "%cerebral palsy%" or lower(description) like "%lumpuh otak%")
-        THEN "CEREBRAL PALSY"
-    WHEN
-        (LOWER(project_categories)="bantuan medis & kesehatan" or LOWER(project_categories)="balita & anak sakit")  
-        AND ((lower(short_url) like "%meningitis%" or lower(short_url) like "%radang otak%") 
-        OR (lower(title) like "%meningitis%" or lower(title) like "%radang otak%"))
-        AND (lower(description) like "%meningitis%" or lower(description) like "%radang otak%")
-        THEN "MENINGITIS"
-    WHEN
-        (LOWER(project_categories)="bantuan medis & kesehatan" or LOWER(project_categories)="balita & anak sakit")  
-        AND ((lower(short_url) like "%Hipotiroid%" or lower(short_url) like "%radang otak%") 
-        OR (lower(title) like "%Hipotiroid%" or lower(title) like "%radang otak%"))
-        AND (lower(description) like "%Hipotiroid%" or lower(description) like "%radang otak%")
-        THEN "HIPOTIROID"
-    WHEN LOWER(project_categories)="bantuan medis & kesehatan" or LOWER(project_categories)="balita & anak sakit"
-    THEN "MEDIS"
-    WHEN LOWER(project_categories)="panti asuhan" OR LOWER(project_categories)="anak yatim dan panti asuhan"
-    THEN "YATIM"
-    WHEN LOWER(project_categories)="bencana alam" AND lower(short_url) not like "%corona%"
-    THEN "BENCANA ALAM"
-    WHEN 
-        (LOWER(project_categories)="infrastruktur umum" OR LOWER(project_categories)="rumah ibadah" OR  LOWER(project_categories)="masjid dan pesantren") 
-        AND ((lower(short_url) like "%masjid%" or lower(short_url) like "%mesjid%") 
-        OR (lower(title) like "%masjid%" or lower(title) like "%mesjid%"))
-        AND (lower(description) like "%masjid%" or lower(description) like "%mesjid%")
-        THEN "MASJID"
-    WHEN 
-        (LOWER(project_categories)="infrastruktur umum" OR LOWER(project_categories)="rumah ibadah") 
-        AND ((lower(short_url) like "%gereja%") 
-        OR (lower(title) like "%gereja%"))
-        AND (lower(description) like "%gereja%")
-        THEN "GEREJA"
-    WHEN 
-        (LOWER(project_categories)="infrastruktur umum" OR LOWER(project_categories)="rumah ibadah") 
-        AND ((lower(short_url) like "%sumur%" or lower(short_url) like "%sumber air%") 
-        OR (lower(title) like "%sumur%" or lower(title) like "%sumber air%"))
-        AND (lower(description) like "%sumur%" or lower(description) like "%sumber air%")
-        THEN "SUMUR"		
-    WHEN
-        (LOWER(project_categories)="infrastruktur umum" OR LOWER(project_categories)="bantuan pendidikan")  
-        AND ((lower(short_url) like "%pesantren%" or lower(short_url) like "%rumah quran%" or lower(short_url) like "%rumah tahfidz%" or lower(short_url) like "%rumah tahfiz%") 
-        OR (lower(title) like "%pesantren%" or lower(title) like "%rumah quran%" or lower(title) like "%rumah tahfidz%" or lower(title) like "%rumah tahfiz%"))
-        AND (lower(description) like "%pesantren%" or lower(description) like "%rumah quran%" or lower(description) like "%rumah tahfidz%" or lower(description) like "%rumah tahfiz%")
-        THEN "PESANTREN/RUMAH QURAN/RUMAH TAHFIDZ"
-    WHEN
-        (LOWER(project_categories)="infrastruktur umum" OR LOWER(project_categories)="bantuan pendidikan")  
-        AND ((lower(short_url) like "%sekolah%" or lower(short_url) like "%sekolah%" or lower(short_url) like "%sekolah%" or lower(short_url) like "%sekolah%") 
-        OR (lower(title) like "%sekolah%" or lower(title) like "%sekolah%" or lower(title) like "%sekolah%" or lower(title) like "%sekolah%"))
-        AND (lower(description) like "%sekolah%" or lower(description) like "%sekolah%" or lower(description) like "%sekolah%" or lower(description) like "%sekolah%")
-        THEN "SEKOLAH"
-    WHEN 
-        (LOWER(project_categories)="kemanusiaan" OR LOWER(project_categories)="kegiatan sosial" OR LOWER(project_categories)="mualaf dan hafidz quran") 
-        AND ((lower(short_url) like "%hafidz%" or lower(short_url) like "%hafiz%" or lower(short_url) like "%hafal quran%" or lower(short_url) like "%hapal quran%") 
-        OR (lower(title) like "%hafidz%" or lower(title) like "%hafiz%" or lower(title) like "%hafal quran%" or lower(title) like "%hapal quran%")) 
-        AND (lower(description) like "%hafidz%" or lower(description) like "%hafiz%" or lower(description) like "%hafal quran%" or lower(description) like "%hapal quran%")  
-    THEN "HAFIDZ"
-    WHEN 
-        (LOWER(project_categories)="kemanusiaan" OR LOWER(project_categories)="kegiatan sosial" OR LOWER(project_categories)="orang tua dan dhuafa") 
-        AND ((lower(short_url) like "%lansia%" or lower(short_url) like "%sebatang kara%" or lower(short_url) like "%kakek%" or lower(short_url) like "%knenek%") 
-        OR (lower(title) like "%lansia%" or lower(title) like "%sebatang kara%" or lower(title) like "%kakek%" or lower(title) like "%knenek%"))
-        AND (lower(description) like "%lansia%" or lower(description) like "%sebatang kara%" or lower(description) like "%kakek%" or lower(description) like "%knenek%") 
-    THEN "LANSIA"
-    ELSE "OTHERS"
-    END as campaign_issue,
+    -- campaign issue
+    case 
+        when medical = true
+            and (
+                lower(short_url) like "%prematur%" 
+                or lower(title) like "%prematur%"
+                or lower(description) like "%prematur%"
+                or lower(diagnosis) like "%prematur%"
+                or lower(disease_tags) like "%prematur%"
+            )
+        then "prematur" 
+        when medical = true
+            and (
+                (lower(diagnosis) like "%komplikasi%" or lower(disease_tags) like "%komplikasi%")
+                or (lower(short_url) like "%komplikasi" or lower(title) like "%komplikasi" or lower(description) like "%komplikasi")
+            ) 
+        then "komplikasi" 
+        when medical = true
+            and (
+                (lower(diagnosis) like "%autoimun%" or lower(disease_tags) like "%autoimun%")
+                or (lower(short_url) like "%autoimun" or lower(title) like "%autoimun" or lower(description) like "%autoimun")    
+            )
+        then "autoimun" 
+        when medical = true
+            and (
+                (lower(diagnosis) like "%jantung%" or lower(disease_tags) like "%kjantung%")
+                or (lower(short_url) like "%jantung" or lower(title) like "%jantung")
+            )
+        then "jantung" 
+        when medical = true 
+            and (
+                (lower(diagnosis) like "%kanker%" AND lower(diagnosis) like "%darah%")
+                or (lower(disease_tags) like "%kanker%" AND lower(disease_tags) like "%darah%")
+                or (lower(short_url) like "%kanker%" AND lower(short_url) like "%darah%")
+                or (lower(title) like "%kanker%" AND lower(title) like "%darah%")
+                or (lower(description) like "%kanker%" AND lower(description) like "%darah%")
+            )
+        then "kanker/tumor"
+        when medical = true 
+            and (
+                (lower(diagnosis) like "%kanker%" or lower(diagnosis) like "%tumor%")
+                or (lower(disease_tags) like "%kanker%" or lower(disease_tags) like "%tumor%")
+                or (lower(short_url) like "%kanker%" or lower(short_url) like "%tumor%")
+                or (lower(title) like "%kanker%" or lower(title) like "%tumor%")
+                or (lower(description) like "%kanker%" or lower(description) like "%tumor%")
+            )
+        then "kanker/tumor"
+        when medical = true 
+            and (
+                (lower(diagnosis) like "%hydro%" or lower(diagnosis) like "%hidro%")
+                or (lower(disease_tags) like "%hydro%" or lower(disease_tags) like "%hidro%")
+                or (lower(short_url) like "%hydro%" or lower(short_url) like "%hidro%")
+                or (lower(title) like "%hydro%" or lower(title) like "%hidro%")
+                or (lower(description) like "%hydro%" or lower(description) like "%hidro%")
+            )
+        then "hidrosefalus"
+        when medical = true 
+            and (
+                (lower(diagnosis) like "%artesia bi%" or lower(diagnosis) like "%atresia bi%")
+                or (lower(disease_tags) like "%artesia bi%" or lower(disease_tags) like "%atresia bi%")
+                or (lower(short_url) like "%artesia bi%" or lower(short_url) like "%atresia bi%")
+                or (lower(title) like "%artesia bi%" or lower(title) like "%atresia bi%")
+            )
+        then "atresia bilier"
+        when medical = true 
+            and (
+                (lower(diagnosis) like "%cerebral palsy%" or lower(diagnosis) like "%lumpuh otak%")
+                or (lower(disease_tags) like "%cerebral palsy%" or lower(disease_tags) like "%lumpuh otak%")
+                or (lower(short_url) like "%cerebral palsy%" or lower(short_url) like "%lumpuh otak%")
+                or (lower(title) like "%cerebral palsy%" or lower(title) like "%lumpuh otak%")
+            )
+        then "cerebral palsy"
+        when medical = true 
+            and (
+                (lower(diagnosis) like "%meningitis%" or lower(diagnosis) like "%radang otak%")
+                or (lower(disease_tags) like "%meningitis%" or lower(disease_tags) like "%radang otak%")
+                or (lower(short_url) like "%meningitis%" or lower(short_url) like "%radang otak%")
+                or (lower(title) like "%meningitis%" or lower(title) like "%radang otak%")
+                or (lower(description) like "%meningitis%" or lower(description) like "%radang otak%")
+            )
+        then "meningitis"
+        when medical = true 
+            and (
+                (lower(diagnosis) like "%obstruksi usus%" or lower(diagnosis) like "%invaginasi usus%" or lower(diagnosis) like "%lumpuh usus%")
+                or (lower(disease_tags) like "%obstruksi usus%" or lower(disease_tags) like "%invaginasi usus%" or lower(disease_tags) like "%lumpuh usus%")
+                or (lower(short_url) like "%obstruksi usus%" or lower(short_url) like "%invaginasi usus%" or lower(short_url) like "%lumpuh usus%")
+                or (lower(title) like "%obstruksi usus%" or lower(title) like "%invaginasi usus%" or lower(title) like "%lumpuh usus%")
+                or (lower(description) like "%obstruksi usus%" or lower(description) like "%invaginasi usus%" or lower(description) like "%lumpuh usus%")
+            )
+        then "obstruksi usus"
+        when medical = true 
+            and (
+                (lower(diagnosis) like "%hipotiroid%" or lower(diagnosis) like "%gondok%")
+                or (lower(disease_tags) like "%hipotiroid%" or lower(disease_tags) like "%gondok%")
+                or (lower(short_url) like "%cerebral palsy%" or lower(short_url) like "%gondok%")
+                or (lower(title) like "%hipotiroid%" or lower(title) like "%gondok%")
+                or (lower(description) like "%hipotiroid%" or lower(description) like "%gondok%")
+            )
+        then "hipotiroid"
+        when medical = true
+            and 
+            (
+                (
+                    (lower(diagnosis) like "%penyakit%" or lower(diagnosis) like "%kondisi%") 
+                    and lower(diagnosis) like "%langka%"
+                ) or
+                (
+                    (lower(short_url) like "%penyakit%" or lower(short_url) like "%kondisi%") 
+                    and lower(short_url) like "%langka%"
+                ) or
+                (
+                    (lower(title) like "%penyakit%" or lower(title) like "%kondisi%") 
+                    and lower(title) like "%langka%"
+                ) or
+                (
+                    (lower(description) like "%penyakit%" or lower(description) like "%kondisi%") 
+                    and lower(description) like "%langka%"
+                ) 
+            )    
+        then "penyakit langka"
+        when medical = true 
+            and (
+                (lower(diagnosis) like "%nicu%" or lower(disease_tags) like "%nicu%" or lower(short_url) like "%nicu%")
+                or (lower(title) like "%nicu%" AND title like "%PICU%")
+                or (lower(description) like "%nicu%" AND description like "%PICU%")
+            )
+        then "NICU/PICU"
+        when medical = true
+            and (
+                (lower(diagnosis) like "%kecelakaan%" or lower(disease_tags) like "%kecelakaan%")
+                or (lower(short_url) like "%kecelakaan" or lower(title) like "%kecelakaan" or lower(description) like "%kecelakaan")
+            )
+        then "kecelakaan"
+        when medical = true
+            and (
+                (lower(diagnosis) like "%begal%" or lower(disease_tags) like "%begal%")
+                or (lower(short_url) like "%begal" or lower(title) like "%begal" or lower(description) like "%begal")
+            )
+        then "korban begal"
+        WHEN medical = false
+            and (LOWER(project_categories)="panti asuhan" OR LOWER(project_categories)="anak yatim dan panti asuhan")
+		THEN "YATIM"
+		WHEN medical = false 
+            and (LOWER(project_categories)="bencana alam" AND lower(short_url) not like "%corona%")
+		THEN "BENCANA ALAM"
+		WHEN medical = false 
+            and (LOWER(project_categories)="infrastruktur umum" OR LOWER(project_categories)="rumah ibadah" OR  LOWER(project_categories)="masjid dan pesantren") 
+            and (
+                (lower(short_url) like "%masjid%" or lower(short_url) like "%mesjid%") 
+                OR (lower(title) like "%masjid%" or lower(title) like "%mesjid%")
+            )
+            AND (lower(description) like "%masjid%" or lower(description) like "%mesjid%")
+            THEN "masjid"
+		WHEN medical = false
+				and (LOWER(project_categories)="infrastruktur umum" OR LOWER(project_categories)="rumah ibadah") 
+				AND (
+                    (lower(short_url) like "%gereja%") 
+				    OR (lower(title) like "%gereja%")
+                )
+				AND (lower(description) like "%gereja%")
+				THEN "gereja"
+		WHEN medical = false
+				and (LOWER(project_categories)="infrastruktur umum" OR LOWER(project_categories)="rumah ibadah") 
+				AND (
+                    (lower(short_url) like "%sumur%" or lower(short_url) like "%sumber air%") 
+				    OR (lower(title) like "%sumur%" or lower(title) like "%air%")
+                )
+				AND (lower(description) like "%sumur%" or lower(description) like "%air%")
+				THEN "sumur"		
+		WHEN medical = false
+				and (LOWER(project_categories)="infrastruktur umum" OR LOWER(project_categories)="bantuan pendidikan")  
+				AND (
+                    (lower(short_url) like "%pesantren%" or lower(short_url) like "%rumah quran%" or lower(short_url) like "%rumah tahfidz%" or lower(short_url) like "%rumah tahfiz%") 
+				    OR (lower(title) like "%pesantren%" or lower(title) like "%rumah quran%" or lower(title) like "%rumah tahfidz%" or lower(title) like "%rumah tahfiz%")
+                )
+				AND (lower(description) like "%pesantren%" or lower(description) like "%rumah quran%" or lower(description) like "%rumah tahfidz%" or lower(description) like "%rumah tahfiz%")
+				THEN "pesantren/rumah quran/rumah tahfidz"
+		WHEN medical = false
+				and (LOWER(project_categories)="infrastruktur umum" OR LOWER(project_categories)="bantuan pendidikan")  
+				AND (
+                    (lower(short_url) like "%sekolah%" or lower(short_url) like "%sekolah%" or lower(short_url) like "%sekolah%" or lower(short_url) like "%sekolah%") 
+				    OR (lower(title) like "%sekolah%" or lower(title) like "%sekolah%" or lower(title) like "%sekolah%" or lower(title) like "%sekolah%")
+                )
+				AND (lower(description) like "%sekolah%" or lower(description) like "%sekolah%" or lower(description) like "%sekolah%" or lower(description) like "%sekolah%")
+				THEN "sekolah"
+		WHEN medical = false
+			and (LOWER(project_categories)="kemanusiaan" OR LOWER(project_categories)="kegiatan sosial" OR LOWER(project_categories)="mualaf dan hafidz quran") 
+			AND (
+                (lower(short_url) like "%hafidz%" or lower(short_url) like "%hafiz%" or lower(short_url) like "%hafal quran%" or lower(short_url) like "%hapal quran%") 
+			    OR (lower(title) like "%hafidz%" or lower(title) like "%hafiz%" or lower(title) like "%hafal quran%" or lower(title) like "%hapal quran%")
+            ) 
+			AND (lower(description) like "%hafidz%" or lower(description) like "%hafiz%" or lower(description) like "%hafal quran%" or lower(description) like "%hapal quran%")  
+			THEN "hafidz"
+		WHEN medical = false
+			and (LOWER(project_categories)="kemanusiaan" OR LOWER(project_categories)="kegiatan sosial" OR LOWER(project_categories)="orang tua dan dhuafa") 
+			AND (
+                (lower(short_url) like "%lansia%" or lower(short_url) like "%sebatang kara%" or lower(short_url) like "%kakek%" or lower(short_url) like "%nenek%") 
+			    OR (lower(title) like "%lansia%" or lower(title) like "%sebatang kara%" or lower(title) like "%kakek%" or lower(title) like "%nenek%")
+            )
+			AND (lower(description) like "%lansia%" or lower(description) like "%sebatang kara%" or lower(description) like "%kakek%" or lower(description) like "%nenek%") 
+			THEN "lansia"
+		WHEN medical = false
+			and (LOWER(project_categories)="kemanusiaan" OR LOWER(project_categories)="kegiatan sosial" OR LOWER(project_categories)="orang tua dan dhuafa") 
+			AND (
+                (lower(short_url) like "%sembako%" or lower(short_url) like "%pangan%" or lower(short_url) like "%bahan makanan%") 
+			    OR (lower(title) like "%sembako%" or lower(title) like "%pangan%" or lower(title) like "%kakek%" or lower(title) like "%bahan makanan%")
+            )
+			AND (lower(description) like "%sembako%" or lower(description) like "%pangan%" or lower(description) like "%bahan makanan%") 
+			THEN "sembako"
+       else "others"
+    end as campaign_issue,
     project_id,
     launched,
     short_url,
