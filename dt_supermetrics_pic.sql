@@ -1,22 +1,49 @@
--- Tabel ads_donation_project_region_province
--- Tabel ads_1
-with ads_1 as (
+-- Tabel purchase
+with purchase as (
+    SELECT 
+    cast(date as date) as date_purchase, 
+    profileid, 
+    ad_name,
+    nullif(sum(offsite_conversions_fb_pixel_purchase),0) offsite_conversions_fb_pixel_purchase,
+    nullif(sum(purchase_conversion_value), 0) purchase_conversion_value,
+    nullif(sum(landing_page_views), 0) as landing_page_views
+    FROM `kitabisa-data-team.data_lake.supermetrics_facebook_ads_website_purchase`
+    group by 1,2,3
+),
+-- Tabel fb left join purchase
+fb as (
     SELECT
-        date as date_ads,
+    date as date_ads,
+    fb_ads.ad_name,
+    short_url,
+    cost as cost,
+    impressions as impressions,
+    action_link_click as action_link_click,
+    coalesce(purchase.landing_page_views, fb_ads.landing_page_views) as landing_page_views,
+    coalesce(offsite_conversions_fb_pixel_purchase, website_purchase) as website_purchase,
+    coalesce(purchase.purchase_conversion_value, fb_ads.purchase_conversion_value) as purchase_conversion_value,
+    FROM data_warehouse.f_supermetrics_facebook_ads as fb_ads
+    left join purchase 
+    on fb_ads.profileid = purchase.profileid and fb_ads.ad_name = purchase.ad_name and fb_ads.date = purchase.date_purchase
+),
+-- Tabel ads
+ads_1 as (
+    SELECT
+        date_ads,
         ad_name,
         short_url as short_url_ads,
-        concat(cast(EXTRACT(YEAR FROM date) as string),'-',cast(EXTRACT(MONTH FROM date) as string)) as month, --to_char(date,'YYYY-MM') as month,
-        min(date) over (partition by left(ad_name,100) order by date asc) as start_date_ads,
-        min(date) over (partition by short_url order by date asc) as start_date_url,
+        concat(cast(EXTRACT(YEAR FROM date_ads) as string),'-',cast(EXTRACT(MONTH FROM date_ads) as string)) as month, --to_char(date,'YYYY-MM') as month,
+        min(date_ads) over (partition by left(ad_name,100) order by date_ads asc) as start_date_ads,
+        min(date_ads) over (partition by short_url order by date_ads asc) as start_date_url,
         cost as cost,
-        landing_page_views as landing_page_views,
+        ifnull(landing_page_views, 0) as landing_page_views,
         impressions as impressions,
         action_link_click as action_link_click,
-        website_purchase as website_purchase,
-        purchase_conversion_value as purchase_conversion_value,
+        ifnull(website_purchase, 0) as website_purchase,
+        ifnull(purchase_conversion_value,0)as purchase_conversion_value,
         'fb' as ads_source
-    FROM data_warehouse.f_supermetrics_facebook_ads
-    where date >= '2020-01-01'
+    FROM fb
+    where date_ads >= '2020-01-01'
     UNION ALL
     SELECT
         date as date_ads,
@@ -452,8 +479,6 @@ ads_donation_project_1 as (
         gdv,
         trx,
         cost,
-        landing_page_views,
-        ga_page_views,
         impressions,
         action_link_click,
         website_purchase,
@@ -466,6 +491,7 @@ ads_donation_project_1 as (
         start_date_ads_by_agency,
         expired,
         final_donation_percentage,
+        landing_page_views,
         Coalesce(Coalesce(pic_ad_name, first_value(pic_ad_name) over(partition by url_campaign,month_id order by month_id asc,cost desc)),first_value(last_ad_name) over(partition by url_campaign order by cost desc)) as pic_name,
         first_value(project_categories_medical) over(partition by url_campaign order by gdv desc) as project_categories_medical,
         first_value(parent_url) over(partition by url_campaign order by gdv desc) as parent_url,
@@ -517,7 +543,6 @@ ads_donation_project_ngo_list_1 as (
         agent_optimize,
         cost,
         landing_page_views,
-        ga_page_views,
         impressions,
         action_link_click,
         website_purchase,
@@ -546,7 +571,7 @@ region_ngo_province_1 as (
 		region_id,
 		provinsi as regional_province_name
 	from data_lake.gsheet_mapping_region_location
-)
+),
 -- output supermetrics_pic
 
     Select
@@ -576,6 +601,7 @@ region_ngo_province_1 as (
         month_id,
         date_id,
         url_campaign,
+        project_id,
         campaign_issue,
         leads_grading,
         ready_date,
@@ -588,7 +614,6 @@ region_ngo_province_1 as (
         trx,
         cost,
         landing_page_views,
-        ga_page_views,
         impressions,
         action_link_click,
         website_purchase,
