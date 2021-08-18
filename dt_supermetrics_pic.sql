@@ -1,22 +1,49 @@
--- Tabel ads_donation_project_region_province
--- Tabel ads_1
-with ads_1 as (
+-- Tabel purchase
+with purchase as (
+    SELECT 
+    cast(date as date) as date_purchase, 
+    profileid, 
+    ad_name,
+    nullif(sum(offsite_conversions_fb_pixel_purchase),0) offsite_conversions_fb_pixel_purchase,
+    nullif(sum(purchase_conversion_value), 0) purchase_conversion_value,
+    nullif(sum(landing_page_views), 0) as landing_page_views
+    FROM `kitabisa-data-team.data_lake.supermetrics_facebook_ads_website_purchase`
+    group by 1,2,3
+),
+-- Tabel fb left join purchase
+fb as (
     SELECT
-        date as date_ads,
+    date as date_ads,
+    fb_ads.ad_name,
+    short_url,
+    cost as cost,
+    impressions as impressions,
+    action_link_click as action_link_click,
+    coalesce(purchase.landing_page_views, fb_ads.landing_page_views) as landing_page_views,
+    coalesce(offsite_conversions_fb_pixel_purchase, website_purchase) as website_purchase,
+    coalesce(purchase.purchase_conversion_value, fb_ads.purchase_conversion_value) as purchase_conversion_value,
+    FROM data_warehouse.f_supermetrics_facebook_ads as fb_ads
+    left join purchase 
+    on fb_ads.profileid = purchase.profileid and fb_ads.ad_name = purchase.ad_name and fb_ads.date = purchase.date_purchase
+),
+-- Tabel ads
+ads_1 as (
+    SELECT
+        date_ads,
         ad_name,
         short_url as short_url_ads,
-        concat(cast(EXTRACT(YEAR FROM date) as string),'-',cast(EXTRACT(MONTH FROM date) as string)) as month, --to_char(date,'YYYY-MM') as month,
-        min(date) over (partition by left(ad_name,100) order by date asc) as start_date_ads,
-        min(date) over (partition by short_url order by date asc) as start_date_url,
+        concat(cast(EXTRACT(YEAR FROM date_ads) as string),'-',cast(EXTRACT(MONTH FROM date_ads) as string)) as month, --to_char(date,'YYYY-MM') as month,
+        min(date_ads) over (partition by left(ad_name,100) order by date_ads asc) as start_date_ads,
+        min(date_ads) over (partition by short_url order by date_ads asc) as start_date_url,
         cost as cost,
-        landing_page_views as landing_page_views,
+        coalesce(landing_page_views, 0) as landing_page_views,
         impressions as impressions,
         action_link_click as action_link_click,
-        website_purchase as website_purchase,
-        purchase_conversion_value as purchase_conversion_value,
+        coalesce(website_purchase, 0) as website_purchase,
+        coalesce(purchase_conversion_value,0)as purchase_conversion_value,
         'fb' as ads_source
-    FROM data_warehouse.f_supermetrics_facebook_ads
-    where date >= '2020-01-01'
+    FROM fb
+    where date_ads >= '2020-01-01'
     UNION ALL
     SELECT
         date as date_ads,
@@ -176,11 +203,11 @@ project_1 as (
     (
         select distinct parent_user_id,
         case when parent_user_id is not null then client_name else null end as parent_user_name,
-        coalesce(cast(c.user_id as int64),h.user_id) as campaigner_id,
+        coalesce(safe_cast(c.user_id as int64),h.user_id) as campaigner_id,
         h.hash 
         from `kitabisa-data-team.data_lake.gsheet_ngo_cabang` c
         full outer join `kitabisa-data-team.data_warehouse.d_hash_user_dashboard_lembaga` h
-        on cast(parent_user_id as int64)=h.user_id
+        on safe_cast(parent_user_id as int64)=h.user_id
     where h.hash is not null
     ) as tbl_hash
     on f_project.user_id = tbl_hash.campaigner_id 
@@ -190,6 +217,7 @@ campaign_issue as (
     SELECT
     -- campaign issue
     case 
+        when lower(project_categories)="difabel" then 'difabel'
         when medical = true
             and (
                 lower(short_url) like "%prematur%" 
@@ -202,19 +230,19 @@ campaign_issue as (
         when medical = true
             and (
                 (lower(diagnosis) like "%komplikasi%" or lower(disease_tags) like "%komplikasi%")
-                or (lower(short_url) like "%komplikasi" or lower(title) like "%komplikasi" or lower(description) like "%komplikasi")
+                or (lower(short_url) like "%komplikasi%" or lower(title) like "%komplikasi%" or lower(description) like "%komplikasi%")
             ) 
         then "komplikasi" 
         when medical = true
             and (
                 (lower(diagnosis) like "%autoimun%" or lower(disease_tags) like "%autoimun%")
-                or (lower(short_url) like "%autoimun" or lower(title) like "%autoimun" or lower(description) like "%autoimun")    
+                or (lower(short_url) like "%autoimun%" or lower(title) like "%autoimun%" or lower(description) like "%autoimun%")    
             )
         then "autoimun" 
         when medical = true
             and (
                 (lower(diagnosis) like "%jantung%" or lower(disease_tags) like "%kjantung%")
-                or (lower(short_url) like "%jantung" or lower(title) like "%jantung")
+                or (lower(short_url) like "%jantung%" or lower(title) like "%jantung%")
             )
         then "jantung" 
         when medical = true 
@@ -225,7 +253,7 @@ campaign_issue as (
                 or (lower(title) like "%kanker%" AND lower(title) like "%darah%")
                 or (lower(description) like "%kanker%" AND lower(description) like "%darah%")
             )
-        then "kanker/tumor"
+        then "kanker darah"
         when medical = true 
             and (
                 (lower(diagnosis) like "%kanker%" or lower(diagnosis) like "%tumor%")
@@ -318,21 +346,21 @@ campaign_issue as (
         when medical = true
             and (
                 (lower(diagnosis) like "%kecelakaan%" or lower(disease_tags) like "%kecelakaan%")
-                or (lower(short_url) like "%kecelakaan" or lower(title) like "%kecelakaan" or lower(description) like "%kecelakaan")
+                or (lower(short_url) like "%kecelakaan%" or lower(title) like "%kecelakaan%" or lower(description) like "%kecelakaan%")
             )
         then "kecelakaan"
         when medical = true
             and (
                 (lower(diagnosis) like "%begal%" or lower(disease_tags) like "%begal%")
-                or (lower(short_url) like "%begal" or lower(title) like "%begal" or lower(description) like "%begal")
+                or (lower(short_url) like "%begal%" or lower(title) like "%begal%" or lower(description) like "%begal%")
             )
         then "korban begal"
         WHEN medical = false
             and (LOWER(project_categories)="panti asuhan" OR LOWER(project_categories)="anak yatim dan panti asuhan")
-		THEN "YATIM"
+		THEN "yatim"
 		WHEN medical = false 
             and (LOWER(project_categories)="bencana alam" AND lower(short_url) not like "%corona%")
-		THEN "BENCANA ALAM"
+		THEN "bencana alam"
 		WHEN medical = false 
             and (LOWER(project_categories)="infrastruktur umum" OR LOWER(project_categories)="rumah ibadah" OR  LOWER(project_categories)="masjid dan pesantren") 
             and (
@@ -452,8 +480,6 @@ ads_donation_project_1 as (
         gdv,
         trx,
         cost,
-        landing_page_views,
-        ga_page_views,
         impressions,
         action_link_click,
         website_purchase,
@@ -466,6 +492,8 @@ ads_donation_project_1 as (
         start_date_ads_by_agency,
         expired,
         final_donation_percentage,
+        landing_page_views,
+        ga_page_views,
         Coalesce(Coalesce(pic_ad_name, first_value(pic_ad_name) over(partition by url_campaign,month_id order by month_id asc,cost desc)),first_value(last_ad_name) over(partition by url_campaign order by cost desc)) as pic_name,
         first_value(project_categories_medical) over(partition by url_campaign order by gdv desc) as project_categories_medical,
         first_value(parent_url) over(partition by url_campaign order by gdv desc) as parent_url,
@@ -576,6 +604,7 @@ region_ngo_province_1 as (
         month_id,
         date_id,
         url_campaign,
+        project_id,
         campaign_issue,
         leads_grading,
         ready_date,
