@@ -76,15 +76,15 @@ ads_preview_link as (
     where rn = 1
 ),
 --- tbl ads_permalink, ads_1 + ads_preview_link
-ads_permalink as (
+ads_2 as (
     select 
         date_ads as date_ads,
         ad_name,
-        l_preview_link as preview_link,
+        --l_preview_link as preview_link,
         start_date_url,
         short_url_ads as short_url_ads,
         month as month_ads,
-        date_id as feeding_date_ads,
+        --date_id as feeding_date_ads,
         start_date_ads,
         ads_source,
         first_value(ad_name) over(partition by short_url_ads,month order by month asc, start_date_ads desc) as pic_ad_name,
@@ -95,15 +95,15 @@ ads_permalink as (
         sum(action_link_click) as action_link_click,
         sum(website_purchase) as website_purchase,
         sum(purchase_conversion_value) as purchase_conversion_value
-    from ads_1 left join ads_preview_link 
-    on ads_1.ad_name = ads_preview_link.l_ad_name
-    group by 1,2,3,4,5,6,7,8,9
+    from ads_1 --left join ads_preview_link 
+    --on ads_1.ad_name = ads_preview_link.l_ad_name
+    group by 1,2,3,4,5,6,7
 ),
 donation_1 as (
     SELECT
         sum(amount) as gdv,
         count(amount) as trx,
-        case when lower(utm_source_group) like '%ads%'  and main_source<>'3rd Party' then 'Ads'
+        case when lower(source_category_level1) like '%ads%'  and main_source<>'3rd Party' then 'Ads'
             when lower(utm_source_group) like '%newsletter%'  and main_source<>'3rd Party' then 'Newsletter'
             when lower(utm_source_group) like '%gojek%'  and main_source<>'3rd Party' then 'Gojek'
             when lower(utm_source_group) like '%pushnotif%'  and main_source<>'3rd Party' then 'Pushnotif'
@@ -113,8 +113,8 @@ donation_1 as (
             else 'Organic'
             end as utm_source,
         case
-            when lower(utm_source_group) like '%ads%'  and main_source<>'3rd Party' and trim(lower(utm_campaign_1[safe_offset(1)]))=lower(coalesce(child_short_url, project_url)) then utm_campaign
-            when lower(utm_source_group) like '%ads%'  and main_source<>'3rd Party' and trim(lower(utm_campaign_1[safe_offset(1)]))<>lower(coalesce(child_short_url, project_url)) then 'Other Ads'
+            when lower(source_category_level1) like '%ads%'  and main_source<>'3rd Party' and trim(lower(utm_campaign_1[safe_offset(1)]))=lower(coalesce(child_short_url, project_url)) then utm_campaign
+            when lower(source_category_level1) like '%ads%'  and main_source<>'3rd Party' and trim(lower(utm_campaign_1[safe_offset(1)]))<>lower(coalesce(child_short_url, project_url)) then 'Other Ads'
             end as utm_ad_name,
         project_categories_medical as project_categories_medical,
         project_url as parent_url,
@@ -148,13 +148,13 @@ ads_donation_1 as (
         start_date_url,
         ads_source,
         ad_name,
-        preview_link,
+        --preview_link,
         utm_ad_name,
         Coalesce(ad_name,utm_ad_name) as ads_name,
         Coalesce(utm_source,'no donation') as utm_source,
         Coalesce(verified_month,month_ads) as month_id,
         Coalesce(verified_day,date_ads) as date_id,
-        feeding_date_ads,
+        --feeding_date_ads,
         Coalesce(url_donation,short_url_ads) as url_campaign,
         Coalesce(gdv,0) as gdv,
         Coalesce(trx,0) as trx,
@@ -164,10 +164,10 @@ ads_donation_1 as (
         Coalesce(action_link_click,0) as action_link_click,
         Coalesce(website_purchase,0) as website_purchase,
         Coalesce(purchase_conversion_value,0) as purchase_conversion_value
-    from ads_permalink full outer join donation_1
-    on ads_permalink.ad_name = donation_1.utm_ad_name 
-        and ads_permalink.date_ads = donation_1.verified_day
-        and ads_permalink.short_url_ads = donation_1.url_donation
+    from ads_2 full outer join donation_1
+    on ads_2.ad_name = donation_1.utm_ad_name 
+        and ads_2.date_ads = donation_1.verified_day
+        and ads_2.short_url_ads = donation_1.url_donation
 ),
 -- tbl_ga
 ga as (
@@ -177,16 +177,26 @@ ga as (
     from (select * from `kitabisa-data-team.data_warehouse.f_daily_ga` 
     where date_id >= '2020-01-01')
     group by 1
+), 
+ads_donation_permalink as (
+    select 
+    ads_donation_1.*,
+    l_preview_link as preview_link,
+    ads_preview_link.date_id as feeding_date_ads 
+    from ads_donation_1 
+    left join ads_preview_link 
+    on trim(left(ads_donation_1.ads_name,100)) = trim(left(ads_preview_link.l_ad_name,100))
 ),
 -- tbl ads_donation_ga
 ads_donation_ga as (
     select 
-    ads_donation_1.*,
+    ads_donation_permalink.*,
     coalesce(page_views,0) as ga_page_views
-    from ads_donation_1 left join ga
-    on concat(ads_donation_1.url_campaign, "_", left(ads_donation_1.ads_name,100), "_", ads_donation_1.date_id) = ga.url_campaign_date
+    from ads_donation_permalink left join ga
+    on concat(ads_donation_permalink.url_campaign, "_", left(ads_donation_permalink.ads_name,100), "_", ads_donation_permalink.date_id) = ga.url_campaign_date
 ),
 -- tbl_proj
+
 project_1 as (
     Select
         cast(project_id as string) as project_id,
