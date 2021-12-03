@@ -1,30 +1,59 @@
+{{ config(schema='data_mart') }}
+{{ config(tags=['supermetrics_optimize']) }}
+{{
+    config(
+        partition_by ={
+            "field": "date_id",
+            "data_type": "date"
+        }
+    )
+}}
+
 -- Tabel purchase
 with purchase as (
     SELECT 
     cast(date as date) as date_purchase, 
-    profileid, 
+    profileid,
+    trim((split(ad_name,'_')[SAFE_OFFSET(1)])) short_url, 
     ad_name,
     nullif(sum(offsite_conversions_fb_pixel_purchase),0) offsite_conversions_fb_pixel_purchase,
     nullif(sum(purchase_conversion_value), 0) purchase_conversion_value,
     nullif(sum(landing_page_views), 0) as landing_page_views
     FROM `kitabisa-data-team.data_lake.supermetrics_facebook_ads_website_purchase`
-    group by 1,2,3
+    group by 1,2,3,4
 ),
--- Tabel fb left join purchase
+
 fb as (
     SELECT
     date as date_ads,
     fb_ads.ad_name,
     short_url,
+    profileid,
+    sum(cost) as cost,
+    sum(impressions) as impressions,
+    sum(action_link_click) as action_link_click,
+    sum(fb_ads.landing_page_views) as landing_page_views,
+    sum(website_purchase) as website_purchase,
+    sum(fb_ads.purchase_conversion_value) as purchase_conversion_value,
+    FROM data_warehouse.f_supermetrics_facebook_ads as fb_ads
+    group by 1,2,3,4
+),
+-- Tabel fb left join purchase
+fb_purchase as (
+    SELECT
+    coalesce(date_ads,date_purchase)date_ads,
+    coalesce(fb_ads.ad_name,purchase.ad_name) ad_name,
+    coalesce(fb_ads.short_url,purchase.short_url) short_url,
     cost as cost,
     impressions as impressions,
     action_link_click as action_link_click,
     coalesce(purchase.landing_page_views, fb_ads.landing_page_views) as landing_page_views,
     coalesce(offsite_conversions_fb_pixel_purchase, website_purchase) as website_purchase,
     coalesce(purchase.purchase_conversion_value, fb_ads.purchase_conversion_value) as purchase_conversion_value,
-    FROM data_warehouse.f_supermetrics_facebook_ads as fb_ads
-    left join purchase 
-    on fb_ads.profileid = purchase.profileid and fb_ads.ad_name = purchase.ad_name and fb_ads.date = purchase.date_purchase
+    from fb fb_ads
+    full outer join  purchase
+    on fb_ads.profileid = purchase.profileid and fb_ads.ad_name = purchase.ad_name and fb_ads.date_ads = purchase.date_purchase
+    
 ),
 -- Tabel ads
 ads_1 as (
@@ -42,7 +71,7 @@ ads_1 as (
         coalesce(website_purchase, 0) as website_purchase,
         coalesce(purchase_conversion_value,0)as purchase_conversion_value,
         'fb' as ads_source
-    FROM fb
+    FROM fb_purchase
     where date_ads >= '2020-01-01'
     UNION ALL
     SELECT
@@ -103,6 +132,8 @@ donation_1 as (
     SELECT
         sum(amount) as gdv,
         count(amount) as trx,
+        sum(case when main_source='Web' then amount end) gdv_pwa,
+        sum(case when main_source='Apps' then amount end) gdv_apps,
         case when lower(source_category_level1) like '%ads%'  and main_source<>'3rd Party' then 'Ads'
             when lower(utm_source_group) like '%newsletter%'  and main_source<>'3rd Party' then 'Newsletter'
             when lower(utm_source_group) like '%gojek%'  and main_source<>'3rd Party' then 'Gojek'
@@ -131,7 +162,7 @@ donation_1 as (
     where cast(flag_support_details as string) like '%"optimize_by_ads":true%'
     and (donation_statuses = 'VERIFIED' OR donation_statuses = 'PAID')
     and verified >= '2020-01-01'
-    group by 3,4,5,6,7,8,9,10,11,12,13,14
+    group by 5,6,7,8,9,10,11,12,13,14,15,16
 ),
 -- ads_donation
 ads_donation_1 as (
@@ -158,6 +189,8 @@ ads_donation_1 as (
         Coalesce(url_donation,short_url_ads) as url_campaign,
         Coalesce(gdv,0) as gdv,
         Coalesce(trx,0) as trx,
+        Coalesce(gdv_pwa,0) as gdv_pwa,
+        Coalesce(gdv_apps,0) as gdv_apps,
         Coalesce(cost,0) as cost,
         Coalesce(landing_page_views,0) as landing_page_views,
         Coalesce(impressions,0) as impressions,
@@ -185,7 +218,7 @@ ads_donation_permalink as (
     ads_preview_link.date_id as feeding_date_ads 
     from ads_donation_1 
     left join ads_preview_link 
-    on trim(left(ads_donation_1.ads_name,100)) = trim(left(ads_preview_link.l_ad_name,100))
+    on trim(left(ads_donation_1.ads_name,120)) = trim(left(ads_preview_link.l_ad_name,120))
 ),
 -- tbl ads_donation_ga
 ads_donation_ga as (
@@ -489,6 +522,8 @@ ads_donation_project_1 as (
         utm_source,
         gdv,
         trx,
+        gdv_pwa,
+        gdv_apps,
         cost,
         impressions,
         action_link_click,
@@ -552,6 +587,8 @@ ads_donation_project_ngo_list_1 as (
         utm_source,
         gdv,
         trx,
+        gdv_pwa,
+        gdv_apps,
         agent_optimize,
         cost,
         landing_page_views,
@@ -591,9 +628,9 @@ region_ngo_province_1 as (
         pic_content,
         pic_visual,
         pic_dm,
-        Coalesce(
+        Coalesce(b.squad,
         (case when acquisition_by like '%hospital%' then 'Hospital'
-            when acquisition_by='program_acquisition' OR (acquisition_by='zakat_acquisition' AND campaigner_full_name like '%Kitabisa%') OR ((campaigner_full_name='Peduli Anak Foundation' OR campaigner_full_name='RQV Indonesia') AND date_id <= '2021-03-31') OR (campaigner_full_name='UNHCR Indonesia' OR campaigner_full_name='Yayasan Bina Mulia Bojonegoro') OR ((campaigner_full_name like '%an Ash-Shalihin%' OR campaigner_full_name='Pondok Sedekah Indonesia' OR campaigner_full_name='Pondok Sedekah Sulsel') AND date_id <= '2021-01-31') THEN 'Program, Zakat, & NGO non-Region'
+            when acquisition_by='program_acquisition' OR (acquisition_by='zakat_acquisition' AND campaigner_full_name like '%Kitabisa%') OR ((campaigner_full_name='Peduli Anak Foundation' OR campaigner_full_name='RQV Indonesia') AND date_id <= '2021-03-31') OR campaigner_full_name='UNHCR Indonesia' OR (campaigner_full_name='Yayasan Bina Mulia Bojonegoro' AND date_id < '2021-04-01') OR ((campaigner_full_name like '%an Ash-Shalihin%' OR campaigner_full_name='Pondok Sedekah Indonesia' OR campaigner_full_name='Pondok Sedekah Sulsel') AND date_id <= '2021-01-31') THEN 'Program, Zakat, & NGO non-Region'
             when (acquisition_by like '%small%' OR acquisition_by like '%impacts%') AND (regional_province_name='Aceh' OR regional_province_name='Lampung' OR regional_province_name='Banten' OR regional_province_name='DKI Jakarta' OR regional_province_name='Jambi' OR regional_province_name='Kalimantan Barat' OR regional_province_name='Riau' OR regional_province_name='Sumatera Barat' OR regional_province_name='Sumatera Selatan' OR regional_province_name='Sumatera Utara') THEN 'NGO Barat 1'
             when (acquisition_by like '%small%' OR acquisition_by like '%impacts%') AND (regional_province_name='Bengkulu' OR regional_province_name='Jawa Barat' OR regional_province_name='Kalimantan Selatan' OR regional_province_name='Kalimantan Tengah' OR regional_province_name='Kalimantan Timur' OR regional_province_name='Kalimantan Utara' OR regional_province_name='Kep. Bangka Belitung' OR regional_province_name='Kep. Riau') THEN 'NGO Barat 2'
             when (acquisition_by like '%small%' OR acquisition_by like '%impacts%') AND (regional_province_name='Bali' OR regional_province_name='Gorontalo' OR regional_province_name='Jawa Tengah' OR regional_province_name='Nusa Tenggara Barat' OR regional_province_name='Nusa Tenggara Timur' OR regional_province_name='Sulawesi Tengah' OR regional_province_name='Yogyakarta') THEN 'NGO Timur 1'
@@ -614,7 +651,7 @@ region_ngo_province_1 as (
         month_id,
         date_id,
         url_campaign,
-        project_id,
+        ads_donation_project_ngo_list_1.project_id,
         campaign_issue,
         leads_grading,
         ready_date,
@@ -625,6 +662,8 @@ region_ngo_province_1 as (
         utm_source,
         gdv,
         trx,
+        gdv_pwa,
+        gdv_apps,
         cost,
         landing_page_views,
         ga_page_views,
@@ -647,3 +686,5 @@ region_ngo_province_1 as (
         acquisition_by
     from ads_donation_project_ngo_list_1 left join region_ngo_province_1
     on cast(ads_donation_project_ngo_list_1.regional_id_list as string) = region_ngo_province_1.region_id
+    left join `kitabisa-data-team.data_lake.gsheet_pof_campaign` b
+    on ads_donation_project_ngo_list_1.url_campaign=b.campaign
