@@ -1,14 +1,3 @@
-{{ config(schema='data_mart') }}
-{{ config(tags=['supermetrics_optimize']) }}
-{{
-    config(
-        partition_by ={
-            "field": "date_id",
-            "data_type": "date"
-        }
-    )
-}}
-
 -- Tabel purchase
 with purchase as (
     SELECT 
@@ -19,7 +8,7 @@ with purchase as (
     nullif(sum(offsite_conversions_fb_pixel_purchase),0) offsite_conversions_fb_pixel_purchase,
     nullif(sum(purchase_conversion_value), 0) purchase_conversion_value,
     nullif(sum(landing_page_views), 0) as landing_page_views
-    FROM {{source('data_lake.supermetrics_facebook_ads_website_purchase')}}
+    FROM `data_lake.supermetrics_facebook_ads_website_purchase`
     group by 1,2,3,4
 ),
 
@@ -35,7 +24,7 @@ fb as (
     sum(fb_ads.landing_page_views) as landing_page_views,
     sum(website_purchase) as website_purchase,
     sum(fb_ads.purchase_conversion_value) as purchase_conversion_value,
-    FROM {{source('data_warehouse.f_supermetrics_facebook_ads')}} as fb_ads
+    FROM `data_warehouse.f_supermetrics_facebook_ads` as fb_ads
     group by 1,2,3,4
 ),
 -- Tabel fb left join purchase
@@ -72,7 +61,7 @@ ads_1 as (
         coalesce(purchase_conversion_value,0)as purchase_conversion_value,
         'fb' as ads_source
     FROM fb_purchase
-    where date_ads >= '2020-01-01'
+    where date_ads >= '2022-01-01'
     UNION ALL
     SELECT
         date as date_ads,
@@ -88,8 +77,8 @@ ads_1 as (
         0 as website_purchase,
         0 as purchase_conversion_value,
         'tiktok' as ads_source
-    From {{source('data_warehouse.f_supermetrics_tiktok_ads')}}
-    where date >= '2020-01-01'
+    From `data_warehouse.f_supermetrics_tiktok_ads`
+    where date >= '2022-01-01'
 ),
 -- tabel ads_preview_link
 ads_preview_link as (
@@ -100,7 +89,7 @@ ads_preview_link as (
             preview_link as l_preview_link,
             date_id,
             row_number() over(partition by ad_name order by date_id DESC) as rn
-            from {{ref('dt_previewlink_ads')}}
+            from `kitabisa-data-team.data_mart.dt_previewlink_ads`
         )
     where rn = 1
 ),
@@ -158,7 +147,7 @@ donation_1 as (
         coalesce(child_short_url, project_url) as url_donation,
         date(verified) as verified_day, --to_date(to_char(verified, 'YYYY-MM-DD'), 'YYYY-MM-DD') as verified_day,
         cast(concat(extract(YEAR from verified),'-',extract(MONTH from verified)) as string) as verified_month -- to_char(verified, 'YYYY-MM') as verified_month
-    from (select *, split(utm_campaign, '_') utm_campaign_1 from {{source('data_warehouse.f_donation')}}) a
+    from (select *, split(utm_campaign, '_') utm_campaign_1 from `kitabisa-data-team.data_warehouse.f_donation`) a
     where cast(flag_support_details as string) like '%"optimize_by_ads":true%'
     and (donation_statuses = 'VERIFIED' OR donation_statuses = 'PAID')
     and verified >= '2020-01-01'
@@ -207,7 +196,7 @@ ga as (
     select
         concat(url, "_", campaign, "_", date_id) as url_campaign_date,
         sum(page_views) as page_views
-    from (select * from {{source('data_warehouse.f_daily_ga')}} 
+    from (select * from `kitabisa-data-team.data_warehouse.f_daily_ga`
     where date_id >= '2020-01-01')
     group by 1
 ), 
@@ -241,15 +230,15 @@ project_1 as (
         tbl_hash.hash,
         tbl_hash.parent_user_id, 
         tbl_hash.parent_user_name
-    from {{source('data_warehouse.f_project')}} 
+    from `kitabisa-data-team.data_warehouse.f_project` f_project
     left join 
     (
         select distinct parent_user_id,
         case when parent_user_id is not null then client_name else null end as parent_user_name,
         coalesce(safe_cast(c.user_id as int64),h.user_id) as campaigner_id,
         h.hash 
-        from {{source('data_lake.gsheet_ngo_cabang')}} c
-        full outer join {{source('data_warehouse.d_hash_user_dashboard_lembaga')}} h
+        from `kitabisa-data-team.data_lake.gsheet_ngo_cabang` c
+        full outer join `kitabisa-data-team.data_warehouse.d_hash_user_dashboard_lembaga` h
         on safe_cast(parent_user_id as int64)=h.user_id
     where h.hash is not null
     ) as tbl_hash
@@ -475,7 +464,7 @@ campaign_issue as (
     short_url,
     start_date_activated,
     start_date_ads_by_agency,
-    from {{source('data_mart.dt_project_details')}}
+    from `kitabisa-data-team.data_mart.dt_project_details`
 ),
 -- tabel project_details
 project_details as (
@@ -497,7 +486,7 @@ leads_grading as (
         short_url,
         max(case when timestamp = '' then null  else cast(timestamp as date) end) as ready_date,
         max(grade) as leads_grading,
-    FROM {{source('data_lake.gsheet_funneling_worklist')}} 
+    FROM `kitabisa-data-team.data_lake.gsheet_funneling_worklist`
     group by 1
 ),
 project_details_grading as (
@@ -559,7 +548,7 @@ region_ngo_id_2 as (
             row_number() over (partition by project_id) as filter_row,
             cast(project_id as string) as project_region_ngo_list,
             regional_id as regional_id_list
-        from {{source('data_lake.mn_paired_offline')}}
+        from `kitabisa-data-team.data_lake.mn_paired_offline`
     ) as region_ngo_id_1
     where filter_row=1
 ),
@@ -627,23 +616,23 @@ new_assign_pic as (
         ,tbl_visual.full_name pic_visual
         ,tbl_content.full_name pic_content
         ,tbl_support.full_name pic_support
-        from {{ref('f_assign_campaign_pic')}} a
-        left join {{source('data_warehouse.f_users')}} tbl_content 
+        from `kitabisa-data-team.data_warehouse.f_assign_campaign_pic` a
+        left join `kitabisa-data-team.data_warehouse.f_users` tbl_content 
         on a.pic_content_id=tbl_content.user_id
-        left join {{source('data_warehouse.f_users')}} tbl_visual 
+        left join `kitabisa-data-team.data_warehouse.f_users` tbl_visual 
         on a.pic_visual_id=tbl_visual.user_id
-        left join {{source('data_warehouse.f_users')}} tbl_dm
+        left join `kitabisa-data-team.data_warehouse.f_users` tbl_dm
         on a.pic_dm_id=tbl_dm.user_id
-        left join {{source('data_warehouse.f_users')}} tbl_support 
+        left join `kitabisa-data-team.data_warehouse.f_users` tbl_support 
         on a.pic_support_id=tbl_support.user_id
-        left join {{ref('d_pic_supply')}} tbl_supply
+        left join `kitabisa-data-team.data_warehouse.d_pic_supply` tbl_supply
         on a.pic_supply_id=tbl_supply.pic_supply_id
     ),
 
     tbl_region as (
         select pic_supply_id,location_id,city,province,
-        from {{ref('d_pic_supply')}} a
-        left join {{ref('d_region')}} b
+        from `kitabisa-data-team.data_warehouse.d_pic_supply` a
+        left join `kitabisa-data-team.data_warehouse.d_region` b
         on a.location_id = b.region_id
     )
     select tbl_pic.*,city,province
@@ -672,7 +661,7 @@ region_ngo_province_1 as (
 	Select
 		region_id,
 		provinsi as regional_province_name
-	from {{source('data_lake.gsheet_mapping_region_location')}}
+	from `kitabisa-data-team.data_lake.gsheet_mapping_region_location`
 ),
 pairing_pic as (
     select a.* except (pic_content,pic_visual,pic_dm)
@@ -693,13 +682,36 @@ pairing_pic as (
     on a.project_id=b.project_id and a.date_id=b.date_id 
     left join region_ngo_province_1 c
     on cast(a.regional_id_list as string) = c.region_id
+),
+-- fix pic name
+pic_name AS (
+    SELECT 
+    lower(trim(raw_pic_name)) raw_pic_name,
+    real_pic_name,
+    lower(trim(a.pic_group)) pic_group,
+    pic_content_target,
+    pic_visual_target,
+    pic_dm_target
+    FROM `kitabisa-data-team.data_lake.gsheet_list_name_pic` a
+    LEFT JOIN (
+        SELECT 
+            pic_name,
+            pic_group,
+            CASE WHEN lower(trim(pic_group)) = 'content' then target_okr END pic_content_target,
+            CASE WHEN lower(trim(pic_group)) = 'visual' then target_okr END pic_visual_target,
+            CASE WHEN lower(trim(pic_group)) = 'dm' then target_okr END pic_dm_target,
+        FROM `kitabisa-data-team.data_lake.gsheet_pic_target`
+        WHERE lower(trim(pic_group)) <> 'supply'
+    ) b
+    on a.real_pic_name = b.pic_name and a.pic_group = b.pic_group
+    WHERE lower(trim(a.pic_group)) <> 'supply'
 )
 -- output supermetrics_pic
 
     Select
-        pic_content,
-        pic_visual,
-        pic_dm,
+        coalesce(content.real_pic_name,pic_content) pic_content,
+        coalesce(visual.real_pic_name,pic_visual) pic_visual,
+        coalesce(dm.real_pic_name,pic_dm) pic_dm,
         pic_supply,
         agent_optimize,
         Coalesce(b.squad,
@@ -757,7 +769,16 @@ pairing_pic as (
         parent_user_name,
         partners_page,
         start_date_url,
-        acquisition_by
+        acquisition_by,
+        content.pic_content_target,
+        visual.pic_visual_target,
+        dm.pic_dm_target
     from pairing_pic 
-    left join {{source('data_lake.gsheet_pof_campaign')}} b
+    left join `kitabisa-data-team.data_lake.gsheet_pof_campaign` b
     on pairing_pic.url_campaign=b.campaign
+    left join pic_name content
+    on lower(trim(pic_content)) = lower(trim(content.raw_pic_name)) and "content"=content.pic_group
+    left join pic_name visual
+    on lower(trim(pic_visual)) = lower(trim(visual.raw_pic_name)) and "visual"=visual.pic_group
+    left join pic_name dm
+    on lower(trim(pic_dm)) = lower(trim(dm.raw_pic_name)) and "dm"=dm.pic_group
